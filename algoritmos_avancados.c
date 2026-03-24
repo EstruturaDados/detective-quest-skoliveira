@@ -7,35 +7,94 @@
 // Este código inicial serve como base para o desenvolvimento das estruturas de navegação, pistas e suspeitos.
 // Use as instruções de cada região para desenvolver o sistema completo com árvore binária, árvore de busca e tabela hash.
 
-typedef struct No {
+typedef struct {
+    char texto[50];
+} Pista;
+
+typedef struct Sala {
     char nome[50];
-    struct No* esquerda;
-    struct No* direita;
+    Pista pista;
+    struct Sala* esquerda;
+    struct Sala* direita;
 } Sala;
 
+typedef struct BST {
+    Pista pista;
+    struct BST* esquerda;
+    struct BST* direita;
+} BST;
+
 // --- Criação
-Sala* criarSala(char* nome) {
+Sala* criarSala(char* nome, Pista* pista) {
     Sala* novo = (Sala*) malloc(sizeof(Sala));
     strcpy(novo->nome, nome);
+    strcpy(novo->pista.texto, pista->texto);
     novo->esquerda = NULL;
     novo->direita = NULL;
     return novo;
 }
 
-Sala* conectarSalas(Sala* sala, char* nome) {
+Sala* conectarSalas(Sala* sala, char* nome, Pista* pista) {
     if(sala == NULL) {
-        return criarSala(nome); // Se árvore está vazia cria um novo nó
+        return criarSala(nome, pista); // Se árvore está vazia cria um novo nó
     }
 
     if(strcmp(nome, sala->nome) < 0) {
         // insere sala a esquerda
-        sala->esquerda = conectarSalas(sala->esquerda, nome);
+        sala->esquerda = conectarSalas(sala->esquerda, nome, pista);
     }
     else {
         // insere sala a direita
-        sala->direita = conectarSalas(sala->direita, nome);
+        sala->direita = conectarSalas(sala->direita, nome, pista);
     }
     return sala;
+}
+
+void desmontarCasa(Sala* sala) {
+    if (sala == NULL) return;
+    desmontarCasa(sala->esquerda);
+    desmontarCasa(sala->direita);
+    free(sala);
+}
+
+// Fução que insere pista na BST
+BST* criarBST(Pista* pista) {
+    BST* novo = (BST*) malloc(sizeof(BST));
+    strcpy(novo->pista.texto, pista->texto);
+    novo->esquerda = NULL;
+    novo->direita = NULL;
+    return novo;
+}
+
+BST* inserirBST(BST* raiz, Pista* pista) {
+    if(raiz == NULL) {
+        return criarBST(pista); // Se árvore está vazia cria um novo nó
+    }
+
+    if(strcmp(pista->texto, raiz->pista.texto) < 0) {
+        // insere raiz a esquerda
+        raiz->esquerda = inserirBST(raiz->esquerda, pista);
+    }
+    else {
+        // insere raiz a direita
+        raiz->direita = inserirBST(raiz->direita, pista);
+    }
+    return raiz;
+}
+
+void listarPistas(BST* raiz) {
+    if (raiz != NULL) {
+        listarPistas(raiz->esquerda);
+        printf("%s; ", raiz->pista.texto);
+        listarPistas(raiz->direita);
+    }
+}
+
+void desmontarBST(BST* raiz) {
+    if (raiz == NULL) return;
+    desmontarBST(raiz->esquerda);
+    desmontarBST(raiz->direita);
+    free(raiz);
 }
 
 // limparBufferEntrada():
@@ -47,7 +106,7 @@ void limparBufferEntrada() {
 
 // --- Exploração
 // Retorna 1 se o jogador se moveu, 0 se o caminho estava bloqueado
-int explorarSalas(Sala* atual) {
+int explorarSalas(Sala* atual, BST* raiz) {
     if (atual == NULL) {
         printf(">>> Caminho bloqueado! Não há sala nessa direção.\n");
         printf("    (Pressione qualquer tecla para voltar...)\n");
@@ -56,6 +115,9 @@ int explorarSalas(Sala* atual) {
     }
 
     char opcao;
+
+    printf("\n  Pista coletada: %s\n", atual->pista.texto);
+    raiz = inserirBST(raiz, &atual->pista);
 
     while (1) {
         printf("\n========================================\n");
@@ -73,6 +135,8 @@ int explorarSalas(Sala* atual) {
         else
             printf("  (sem saída)");
         printf("\n");
+        printf("    [l] Listar pistas coletadas");
+        printf("\n");
         printf("    [s] Sair\n");
         printf("========================================\n");
         printf("Sua escolha: ");
@@ -81,11 +145,15 @@ int explorarSalas(Sala* atual) {
         limparBufferEntrada();
 
         if (opcao == 'e') {
-            if (explorarSalas(atual->esquerda))  // só sai do loop se houve movimento
+            if (explorarSalas(atual->esquerda, raiz))  // só sai do loop se houve movimento
                 break;
         } else if (opcao == 'd') {
-            if (explorarSalas(atual->direita))   // só sai do loop se houve movimento
+            if (explorarSalas(atual->direita, raiz))  // só sai do loop se houve movimento
                 break;
+        } else if (opcao == 'l') {
+            printf("\n Lista das pistas coletadas: ");
+            listarPistas(raiz);
+            printf("\n");
         } else if (opcao == 's') {
             printf("\nVocê saiu da mansão. Até a próxima!\n");
             exit(0);
@@ -95,13 +163,6 @@ int explorarSalas(Sala* atual) {
     }
 
     return 1;  // houve movimento
-}
-
-void desmontarCasa(Sala* sala) {
-    if (sala == NULL) return;
-    desmontarCasa(sala->esquerda);
-    desmontarCasa(sala->direita);
-    free(sala);
 }
 
 int main() {
@@ -117,23 +178,6 @@ int main() {
     // - Use recursão ou laços para caminhar pela árvore.
     // - Nenhuma inserção dinâmica é necessária neste nível.
     
-    Sala* raiz = NULL;
-
-    raiz = conectarSalas(raiz, "Hall de Entrada");
-    raiz = conectarSalas(raiz, "Sala de Estar");
-    raiz = conectarSalas(raiz, "Biblioteca");
-    raiz = conectarSalas(raiz, "Quarto");
-
-    printf("====================================\n");
-    printf("     Detective Quest — Mansão\n");
-    printf("====================================\n");
-    printf("Explore a mansão!\n");
-    printf("Use 'e' (esquerda), 'd' (direita) ou 's' (sair).\n");
-
-    explorarSalas(raiz);
-
-    desmontarCasa(raiz); // libera a memória
-
     // 🔍 Nível Aventureiro: Armazenamento de Pistas com Árvore de Busca
     //
     // - Crie uma struct Pista com campo texto (string).
@@ -144,6 +188,35 @@ int main() {
     // - Não precisa remover ou balancear a árvore.
     // - Use funções para modularizar: inserirPista(), listarPistas().
     // - A árvore de pistas deve ser exibida quando o jogador quiser revisar evidências.
+
+    Sala* raiz = NULL;
+    BST* bst = NULL;
+
+    Pista pista1;
+    Pista pista2;
+    Pista pista3;
+    Pista pista4;
+
+    // inserir comodos e suas pistas
+    strcpy(pista1.texto, "ciclete usado");
+    raiz = conectarSalas(raiz, "Hall de Entrada", &pista1);
+    strcpy(pista2.texto, "lenço usado");
+    raiz = conectarSalas(raiz, "Sala de Estar", &pista2);
+    strcpy(pista3.texto, "cartucho de munição");
+    raiz = conectarSalas(raiz, "Biblioteca", &pista3);
+    strcpy(pista4.texto, "copo de café descartável");
+    raiz = conectarSalas(raiz, "Quarto", &pista4);
+
+    printf("====================================\n");
+    printf("     Detective Quest — Mansão\n");
+    printf("====================================\n");
+    printf("Explore a mansão!\n");
+    printf("Use 'e' (esquerda), 'd' (direita) ou 's' (sair).\n");
+
+    explorarSalas(raiz, bst);
+
+    desmontarCasa(raiz); // libera a memória
+    desmontarBST(bst);
 
     // 🧠 Nível Mestre: Relacionamento de Pistas com Suspeitos via Hash
     //
