@@ -7,6 +7,8 @@
 // Este código inicial serve como base para o desenvolvimento das estruturas de navegação, pistas e suspeitos.
 // Use as instruções de cada região para desenvolver o sistema completo com árvore binária, árvore de busca e tabela hash.
 
+#define TAMANHO_TABELA 10
+
 typedef struct {
     char texto[50];
 } Pista;
@@ -23,6 +25,136 @@ typedef struct BST {
     struct BST* esquerda;
     struct BST* direita;
 } BST;
+
+// Estrutura de um nó da lista ligada
+typedef struct Tab {
+    Pista pista;               // pista como chave
+    char nome[50];             // Armazena o nome
+    struct Tab* proximo;       // Ponteiro para o próximo nó
+} Tabela;
+
+// A tabela hash é um vetor de ponteiros para Nodo
+Tabela* tabela_hash[TAMANHO_TABELA];
+
+int funcaoHash(Pista* pista) {
+    int soma = 0;
+    for (int i = 0; pista->texto[i] != '\0'; i++) {
+        soma += pista->texto[i];
+    }
+    return soma % TAMANHO_TABELA;
+}
+
+void inseriNaHash(Pista* pista, const char* nome) {
+    int indice = funcaoHash(pista); // Descobre onde armazenar
+    // Cria um nó
+    Tabela* novo = (Tabela*)malloc(sizeof(Tabela));
+    strcpy(novo->pista.texto, pista->texto);
+    strcpy(novo->nome, nome);
+
+    // Insere no início da lista (head)
+    novo->proximo = tabela_hash[indice];
+    tabela_hash[indice] = novo;
+}
+
+Tabela* encontrarSuspeito(Pista* pista) {
+        int indice = funcaoHash(pista);
+        Tabela* atual = tabela_hash[indice];
+    
+        while (atual != NULL) {
+            if (strcmp(atual->pista.texto, pista->texto) == 0) {
+                return atual; // Encontrou
+        }
+        atual = atual->proximo;
+    }
+
+    return NULL; // Não está na lista
+}
+
+// limparBufferEntrada():
+// Função utilitária para limpar o buffer de entrada do teclado (stdin), evitando problemas com leituras consecutivas de scanf e getchar.
+void limparBufferEntrada() {
+    int c;
+    while((c = getchar()) != '\n' && c != EOF);
+}
+
+void verificarSuspeitoFinal() {
+    // --- Contagem de pistas por suspeito ---
+    // Estrutura auxiliar local para guardar nome + contagem
+    typedef struct {
+        char nome[50];
+        int contagem;
+    } ContaSuspeito;
+
+    ContaSuspeito suspeitos[TAMANHO_TABELA * 5]; // espaço generoso
+    int total = 0;
+
+    // Percorre toda a tabela hash
+    for (int i = 0; i < TAMANHO_TABELA; i++) {
+        Tabela* atual = tabela_hash[i];
+        while (atual != NULL) {
+            // Verifica se o suspeito já está na lista auxiliar
+            int encontrado = 0;
+            for (int j = 0; j < total; j++) {
+                if (strcmp(suspeitos[j].nome, atual->nome) == 0) {
+                    suspeitos[j].contagem++;
+                    encontrado = 1;
+                    break;
+                }
+            }
+            // Se não estava, adiciona
+            if (!encontrado) {
+                strcpy(suspeitos[total].nome, atual->nome);
+                suspeitos[total].contagem = 1;
+                total++;
+            }
+            atual = atual->proximo;
+        }
+    }
+
+    // --- Exibição dos suspeitos e suas pistas ---
+    printf("\n========================================\n");
+    printf("   HORA DE RESOLVER O MISTÉRIO!\n");
+    printf("========================================\n");
+    printf("Lista de Suspeitos:\n\n");
+
+    for (int i = 0; i < total; i++) {
+        printf("  [%s]\n", suspeitos[i].nome);
+    }
+
+    // --- Determina o culpado real (quem tem 2+ pistas) ---
+    char culpadoReal[50] = "";
+    int maiorContagem = 0;
+
+    for (int i = 0; i < total; i++) {
+        if (suspeitos[i].contagem >= 2 && suspeitos[i].contagem > maiorContagem) {
+            maiorContagem = suspeitos[i].contagem;
+            strcpy(culpadoReal, suspeitos[i].nome);
+        }
+    }
+
+    // --- Pede o palpite do jogador ---
+    char palpite[50];
+    printf("\nQuem você acha que é o culpado? ");
+    scanf(" %49[^\n]", palpite);
+    limparBufferEntrada();
+
+    // --- Verifica o palpite ---
+    printf("\n========================================\n");
+    if (strcmp(palpite, culpadoReal) == 0) {
+        printf("  PARABÉNS! Você desvendou o caso!\n");
+        printf("  %s é mesmo o culpado — flagrado por %d pistas!\n",
+               culpadoReal, maiorContagem);
+    } else {
+        printf("  Errou! %s é inocente nessa história.\n", palpite);
+        if (strlen(culpadoReal) > 0) {
+            printf("  O verdadeiro culpado era: %s (%d pistas).\n",
+                   culpadoReal, maiorContagem);
+        } else {
+            printf("  Pistas insuficientes para apontar um culpado.\n");
+        }
+    }
+    printf("========================================\n");
+}
 
 // --- Criação
 Sala* criarSala(char* nome, Pista* pista) {
@@ -66,18 +198,18 @@ BST* criarBST(Pista* pista) {
     return novo;
 }
 
-BST* inserirBST(BST* raiz, Pista* pista) {
+BST* inserirPista(BST* raiz, Pista* pista) {
     if(raiz == NULL) {
         return criarBST(pista); // Se árvore está vazia cria um novo nó
     }
 
     if(strcmp(pista->texto, raiz->pista.texto) < 0) {
         // insere raiz a esquerda
-        raiz->esquerda = inserirBST(raiz->esquerda, pista);
+        raiz->esquerda = inserirPista(raiz->esquerda, pista);
     }
     else {
         // insere raiz a direita
-        raiz->direita = inserirBST(raiz->direita, pista);
+        raiz->direita = inserirPista(raiz->direita, pista);
     }
     return raiz;
 }
@@ -85,7 +217,8 @@ BST* inserirBST(BST* raiz, Pista* pista) {
 void listarPistas(BST* raiz) {
     if (raiz != NULL) {
         listarPistas(raiz->esquerda);
-        printf("%s; ", raiz->pista.texto);
+        printf("%s ", raiz->pista.texto);
+        printf("(%s); ", encontrarSuspeito(&raiz->pista)->nome);
         listarPistas(raiz->direita);
     }
 }
@@ -95,13 +228,6 @@ void desmontarBST(BST* raiz) {
     desmontarBST(raiz->esquerda);
     desmontarBST(raiz->direita);
     free(raiz);
-}
-
-// limparBufferEntrada():
-// Função utilitária para limpar o buffer de entrada do teclado (stdin), evitando problemas com leituras consecutivas de scanf e getchar.
-void limparBufferEntrada() {
-    int c;
-    while((c = getchar()) != '\n' && c != EOF);
 }
 
 // --- Exploração
@@ -117,7 +243,7 @@ int explorarSalas(Sala* atual, BST* raiz) {
     char opcao;
 
     printf("\n  Pista coletada: %s\n", atual->pista.texto);
-    raiz = inserirBST(raiz, &atual->pista);
+    raiz = inserirPista(raiz, &atual->pista);
 
     while (1) {
         printf("\n========================================\n");
@@ -137,6 +263,8 @@ int explorarSalas(Sala* atual, BST* raiz) {
         printf("\n");
         printf("    [l] Listar pistas coletadas");
         printf("\n");
+        printf("    [a] Acusar suspeito");
+        printf("\n");
         printf("    [s] Sair\n");
         printf("========================================\n");
         printf("Sua escolha: ");
@@ -154,6 +282,10 @@ int explorarSalas(Sala* atual, BST* raiz) {
             printf("\n Lista das pistas coletadas: ");
             listarPistas(raiz);
             printf("\n");
+        } else if (opcao == 'a') {
+            printf("\n");
+            verificarSuspeitoFinal();
+            exit(0);
         } else if (opcao == 's') {
             printf("\nVocê saiu da mansão. Até a próxima!\n");
             exit(0);
@@ -189,35 +321,6 @@ int main() {
     // - Use funções para modularizar: inserirPista(), listarPistas().
     // - A árvore de pistas deve ser exibida quando o jogador quiser revisar evidências.
 
-    Sala* raiz = NULL;
-    BST* bst = NULL;
-
-    Pista pista1;
-    Pista pista2;
-    Pista pista3;
-    Pista pista4;
-
-    // inserir comodos e suas pistas
-    strcpy(pista1.texto, "ciclete usado");
-    raiz = conectarSalas(raiz, "Hall de Entrada", &pista1);
-    strcpy(pista2.texto, "lenço usado");
-    raiz = conectarSalas(raiz, "Sala de Estar", &pista2);
-    strcpy(pista3.texto, "cartucho de munição");
-    raiz = conectarSalas(raiz, "Biblioteca", &pista3);
-    strcpy(pista4.texto, "copo de café descartável");
-    raiz = conectarSalas(raiz, "Quarto", &pista4);
-
-    printf("====================================\n");
-    printf("     Detective Quest — Mansão\n");
-    printf("====================================\n");
-    printf("Explore a mansão!\n");
-    printf("Use 'e' (esquerda), 'd' (direita) ou 's' (sair).\n");
-
-    explorarSalas(raiz, bst);
-
-    desmontarCasa(raiz); // libera a memória
-    desmontarBST(bst);
-
     // 🧠 Nível Mestre: Relacionamento de Pistas com Suspeitos via Hash
     //
     // - Crie uma struct Suspeito contendo nome e lista de pistas associadas.
@@ -230,6 +333,40 @@ int main() {
     // - Para hashing simples, pode usar soma dos valores ASCII do nome ou primeira letra.
     // - Em caso de colisão, use lista encadeada para tratar.
     // - Modularize com funções como inicializarHash(), buscarSuspeito(), listarAssociacoes().
+
+    Sala* raiz = NULL;
+    BST* bst = NULL;
+
+    Pista pista1;
+    Pista pista2;
+    Pista pista3;
+    Pista pista4;
+    strcpy(pista1.texto, "ciclete usado");
+    strcpy(pista2.texto, "lenço usado");
+    strcpy(pista3.texto, "cartucho de munição");
+    strcpy(pista4.texto, "copo de café descartável");
+
+    // inserir comodos e suas pistas
+    raiz = conectarSalas(raiz, "Hall de Entrada", &pista1);
+    raiz = conectarSalas(raiz, "Sala de Estar", &pista2);
+    raiz = conectarSalas(raiz, "Biblioteca", &pista3);
+    raiz = conectarSalas(raiz, "Quarto", &pista4);
+
+    inseriNaHash(&pista1, "Bruno");
+    inseriNaHash(&pista2, "Bruno");
+    inseriNaHash(&pista3, "Ana");
+    inseriNaHash(&pista4, "Carlos");
+
+    printf("====================================\n");
+    printf("     Detective Quest — Mansão\n");
+    printf("====================================\n");
+    printf("Explore a mansão!\n");
+    printf("Use 'e' (esquerda), 'd' (direita) ou 's' (sair).\n");
+
+    explorarSalas(raiz, bst);
+
+    desmontarCasa(raiz); // libera a memória
+    desmontarBST(bst);
 
     return 0;
 }
