@@ -22,7 +22,7 @@ Sala* criarSala(char* nome) {
     return novo;
 }
 
-Sala* conectarSalas(Sala* sala, const char* nome) {
+Sala* conectarSalas(Sala* sala, char* nome) {
     if(sala == NULL) {
         return criarSala(nome); // Se árvore está vazia cria um novo nó
     }
@@ -36,6 +36,13 @@ Sala* conectarSalas(Sala* sala, const char* nome) {
         sala->direita = conectarSalas(sala->direita, nome);
     }
     return sala;
+}
+
+// limparBufferEntrada():
+// Função utilitária para limpar o buffer de entrada do teclado (stdin), evitando problemas com leituras consecutivas de scanf e getchar.
+void limparBufferEntrada() {
+    int c;
+    while((c = getchar()) != '\n' && c != EOF);
 }
 
 // --- Exploração
@@ -95,13 +102,6 @@ void desmontarCasa(Sala* sala) {
     desmontarCasa(sala->esquerda);
     desmontarCasa(sala->direita);
     free(sala);
-}
-
-// limparBufferEntrada():
-// Função utilitária para limpar o buffer de entrada do teclado (stdin), evitando problemas com leituras consecutivas de scanf e getchar.
-void limparBufferEntrada() {
-    int c;
-    while((c = getchar()) != '\n' && c != EOF);
 }
 
 int main() {
